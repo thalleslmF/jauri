@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>ADR-002: Comunicação IPC via HTTP</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+  h1 { color: #58a6ff; border-bottom: 2px solid #30363d; padding-bottom: .5rem; }
+  h2 { color: #d2a8ff; margin-top: 2rem; }
+  .meta { color: #8b949e; font-size: .9rem; }
+  .status-accepted { display: inline-block; background: #238636; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: .8rem; font-weight: 600; }
+  .decision { background: #161b22; border: 1px solid #30363d; border-left: 3px solid #58a6ff; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+  .consequence { background: #1c2128; border-left: 3px solid #d29922; padding: .75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  code { background: #1c2128; padding: 2px 6px; border-radius: 4px; }
+  ul { padding-left: 1.2rem; }
+</style>
+</head>
+<body>
+
+<h1>ADR-002: Comunicação IPC via HTTP</h1>
+<p class="meta">
+  <span class="status-accepted">Aceito</span> &bull; 2026-05-16
+</p>
+
+<h2>Contexto</h2>
+<p>O frontend (webview) e o backend (Java) precisam se comunicar. As opções incluem: HTTP localhost, pipe nomeado, stdin/stdout subprocess, ou bindings JNA pra expor funções Java pro JS.</p>
+
+<h2>Decisão</h2>
+<p>Usar <strong>HTTP localhost</strong> via <code>com.sun.net.httpserver.HttpServer</code> (JDK nativo).</p>
+
+<div class="decision">
+<strong>Formato:</strong>
+<ul>
+  <li>Endpoint único: <code>POST /api/invoke</code></li>
+  <li>Body: <code>{"cmd": "nome", "args": {"chave": "valor"}}</code></li>
+  <li>Resposta: <code>{"result": {...}}</code> ou <code>{"error": "..."}</code></li>
+  <li>Porta: escolhida pelo SO (porta 0), evitando conflitos</li>
+  <li>Escuta: <code>127.0.0.1</code> (só local, sem exposição externa)</li>
+</ul>
+</div>
+
+<h2>Justificativa</h2>
+<ul>
+  <li><strong>Zero dependências:</strong> <code>com.sun.net.httpserver</code> vem no JDK 6+</li>
+  <li><strong>Simplicidade:</strong> fetch padrão do JS, sem bibliotecas especiais</li>
+  <li><strong>Debuggável:</strong> qualquer ferramenta HTTP (curl, Postman) pode testar</li>
+  <li><strong>Separação clara:</strong> frontend e backend são independentes</li>
+  <li><strong>Hot reload natural:</strong> servidor fica rodando, só recarregar a webview</li>
+</ul>
+
+<h2>Consequências</h2>
+<div class="consequence">
+<strong>Positivas:</strong> Testável com curl, zero binding nativo, fácil de prototipar.
+</div>
+<div class="consequence">
+<strong>Negativas:</strong> Overhead de serialização JSON (marginal pra apps desktop). Latência de ~1ms por chamada.
+</div>
+
+</body>
+</html>

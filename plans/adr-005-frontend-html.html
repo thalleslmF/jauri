@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>ADR-005: Frontend HTML puro</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+  h1 { color: #58a6ff; border-bottom: 2px solid #30363d; padding-bottom: .5rem; }
+  h2 { color: #d2a8ff; margin-top: 2rem; }
+  .meta { color: #8b949e; font-size: .9rem; }
+  .status-accepted { display: inline-block; background: #238636; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: .8rem; font-weight: 600; }
+  .decision { background: #161b22; border: 1px solid #30363d; border-left: 3px solid #58a6ff; border-radius: 6px; padding: 1rem; margin: 1rem 0; }
+  .consequence { background: #1c2128; border-left: 3px solid #d29922; padding: .75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  code { background: #1c2128; padding: 2px 6px; border-radius: 4px; }
+  ul { padding-left: 1.2rem; }
+</style>
+</head>
+<body>
+
+<h1>ADR-005: Frontend HTML puro</h1>
+<p class="meta">
+  <span class="status-accepted">Aceito</span> &bull; 2026-05-16
+</p>
+
+<h2>Contexto</h2>
+<p>Qual tecnologia usar pra construir a interface do usuário dos apps Jauri.</p>
+
+<h2>Decisão</h2>
+<p>O Jauri engine não impõe framework frontend. A engine serve arquivos HTML/CSS/JS estáticos. Cada app pode usar: vanilla, React, Svelte, Alpine.js, htmx, ou qualquer coisa que compile pra HTML/CSS/JS.</p>
+
+<div class="decision">
+<strong>Contrato entre engine e app:</strong>
+<ul>
+  <li>App coloca arquivos em <code>src/main/resources/static/</code></li>
+  <li>Engine extrai pra <code>/tmp/jauri-XXXX/</code> e serve via HTTP</li>
+  <li>JS faz <code>fetch('/api/invoke', {method:'POST', body: JSON.stringify({cmd, args})})</code></li>
+  <li>Engine devolve <code>{"result": ...}</code> ou <code>{"error": "..."}</code></li>
+</ul>
+</div>
+
+<h2>Justificativa</h2>
+<ul>
+  <li>Escolha do framework é do app, não da engine</li>
+  <li>HTML/CSS/JS é o padrão universal de UI</li>
+  <li>Separação clara: engine não sabe de React/Svelte/Vue</li>
+  <li>Hot reload natural: só trocar o arquivo HTML e recarregar</li>
+</ul>
+
+<h2>Consequências</h2>
+<div class="consequence">
+<strong>Positivas:</strong> Flexibilidade total, ecossistema web completo (CodeMirror, DataGrid, Chart.js), zero lock-in.
+</div>
+<div class="consequence">
+<strong>Negativas:</strong> App precisa saber HTML/CSS/JS básico. Não é zero-code.
+</div>
+
+</body>
+</html>

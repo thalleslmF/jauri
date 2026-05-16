@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Jauri — SPEC</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+  h1 { color: #58a6ff; border-bottom: 2px solid #30363d; padding-bottom: .5rem; }
+  h2 { color: #58a6ff; margin-top: 2.5rem; }
+  h3 { color: #d2a8ff; margin-top: 2rem; }
+  .meta { color: #8b949e; font-size: .9rem; }
+  .milestone { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; }
+  .milestone h3 { margin-top: 0; }
+  .task { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 1rem; margin: .75rem 0; }
+  .task h4 { margin: 0 0 .25rem 0; color: #f0f6fc; }
+  .task .meta { font-size: .85rem; }
+  .task .accept { background: #1c2128; border-left: 3px solid #3fb950; padding: .5rem .75rem; margin-top: .5rem; border-radius: 0 6px 6px 0; font-size: .9rem; }
+  .task .refs { font-size: .85rem; color: #8b949e; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .25rem 0; }
+  code { background: #1c2128; padding: 2px 6px; border-radius: 4px; font-size: .85rem; }
+  .box { background: #1c2128; border-left: 3px solid #58a6ff; padding: .75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border: 1px solid #30363d; padding: .5rem .75rem; text-align: left; }
+  th { background: #161b22; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
+  .tag-jna { background: #da3633; color: #fff; }
+  .tag-gtk { background: #1f6feb; color: #fff; }
+  .tag-http { background: #238636; color: #fff; }
+  .tag-graalvm { background: #8957e5; color: #fff; }
+  .tag-html { background: #d29922; color: #fff; }
+  .tag-bridge { background: #a371f7; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>Jauri — Especificação Técnica</h1>
+<p class="meta">versão 0.1 &bull; 2026-05-16 &bull; <a href="#adrs" style="color:#58a6ff">ADRs</a></p>
+
+<div class="box">
+<strong>Resumo:</strong> Jauri é uma engine Java que executa apps desktop usando webview nativa (WebKitGTK) como frontend, comunicação via HTTP localhost, e compilação com GraalVM native-image. Concorrente de JCEF e JavaFX WebView — mais leve, mais rápido, só Linux.
+</div>
+
+<h2>Filosofia</h2>
+<ul>
+  <li>Cada entrega é um binário executável e testável (não "80% do código")</li>
+  <li>Cada tarefa tem critério de aceite claro e testável</li>
+  <li>Mudanças estruturais viram <a href="#adrs" style="color:#58a6ff">ADRs</a> (em HTML)</li>
+  <li>Não pular marcos — cada um resolve um problema real antes do próximo</li>
+</ul>
+
+<h2>Stack</h2>
+<table>
+  <tr><th>Componente</th><th>Tecnologia</th></tr>
+  <tr><td>Linguagem</td><td>Java 11+ (Maven)</td></tr>
+  <tr><td>Native bindings</td><td>JNA 5.14+</td></tr>
+  <tr><td>Janela + Webview</td><td>GTK 3 + WebKitGTK 4.1 via JNA</td></tr>
+  <tr><td>HTTP Server</td><td><code>com.sun.net.httpserver</code> (JDK nativo)</td></tr>
+  <tr><td>Serialização</td><td>Jackson ou Gson</td></tr>
+  <tr><td>Native Image</td><td>GraalVM CE / native-image</td></tr>
+  <tr><td>Frontend</td><td>HTML/CSS/JS puro (qualquer framework)</td></tr>
+</table>
+
+<h2>Marcos</h2>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M0 — Projeto Java + JNA + GTK Window</h3>
+<p class="meta">Dependências: nenhuma &bull; Entrega: binário que abre janela vazia</p>
+<p>Alvo de aprendizado: JNA, bindings GTK, Maven com native code.</p>
+
+<div class="task">
+<h4>M0.1 — Scaffold Maven com JNA</h4>
+<p><span class="tag tag-jna">jna</span></p>
+<p>Criar projeto Maven, adicionar JNA, configurar <code>pom.xml</code>, classe main, Makefile simples pra build + run.</p>
+<div class="accept"><strong>Critério:</strong> <code>mvn compile exec:java -Dexec.mainClass=jauri.Main</code> roda sem erro e printa "Jauri OK"</div>
+</div>
+
+<div class="task">
+<h4>M0.2 — JNA binding: libc (aquecimento)</h4>
+<p><span class="tag tag-jna">jna</span></p>
+<p>Criar interface <code>jauri.jna.LibC</code> com <code>printf</code>, <code>getpid</code>, <code>sleep</code>. Chamar do Java pra provar que JNA funciona.</p>
+<div class="accept"><strong>Critério:</strong> <code>LibC.INSTANCE.getpid()</code> retorna um PID real. <code>LibC.INSTANCE.printf</code> printa no terminal.</div>
+</div>
+
+<div class="task">
+<h4>M0.3 — JNA binding: GTK 3 mínimo</h4>
+<p><span class="tag tag-jna">jna</span> <span class="tag tag-gtk">gtk</span></p>
+<p>Interface <code>jauri.jna.Gtk3</code> com: <code>gtk_init</code>, <code>gtk_window_new</code>, <code>gtk_widget_show_all</code>, <code>gtk_main</code>, <code>gtk_main_quit</code>. Chamar em <code>main()</code> pra abrir janela vazia.</p>
+<div class="accept"><strong>Critério:</strong> Rodar <code>Main.java</code> → janela vazia aparece. Fechar com Ctrl+C ou botão X.</div>
+</div>
+
+<div class="task">
+<h4>M0.4 — GtkMainLoop em thread separada</h4>
+<p><span class="tag tag-gtk">gtk</span> <span class="tag tag-jna">jna</span></p>
+<p>GTK precisa rodar na thread principal. Extrair loop pra classe <code>GtkMainLoop</code> que gerencia <code>gtk_main()</code> + shutdown via <code>gtk_main_quit()</code>.</p>
+<div class="accept"><strong>Critério:</strong> Fechar janela → <code>gtk_main_quit</code> é chamado → programa termina com exit code 0.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M1 — Janela com WebView carregando HTML</h3>
+<p class="meta">Dependências: M0 &bull; Entrega: binário que abre janela com HTML renderizado</p>
+<p>Alvo: binding WebKitGTK, carregar HTML inline, carregar HTML de arquivo.</p>
+
+<div class="task">
+<h4>M1.1 — JNA binding: WebKitGTK inicialização</h4>
+<p><span class="tag tag-jna">jna</span> <span class="tag tag-gtk">gtk</span></p>
+<p>Interface <code>jauri.jna.WebKit</code> com: <code>webkit_web_view_new</code>. Instanciar WebView, colocar dentro da janela GTK.</p>
+<div class="accept"><strong>Critério:</strong> Janela abre com uma área vazia (a webview) dentro. 0 erros.</div>
+</div>
+
+<div class="task">
+<h4>M1.2 — Carregar HTML inline na webview</h4>
+<p><span class="tag tag-jna">jna</span> <span class="tag tag-html">html</span></p>
+<p>Binding de <code>webkit_web_view_load_html</code>. Criar método <code>JauriWebView.loadHtml(String html)</code>.</p>
+<div class="accept"><strong>Critério:</strong> <code>loadHtml("&lt;h1&gt;Jauri&lt;/h1&gt;")</code> renderiza "Jauri" na janela.</div>
+</div>
+
+<div class="task">
+<h4>M1.3 — Carregar HTML de arquivo</h4>
+<p><span class="tag tag-jna">jna</span> <span class="tag tag-html">html</span></p>
+<p>Binding de <code>webkit_web_view_load_uri</code> com <code>file://</code>. Extrair assets de <code>/static/</code> do classpath pra um diretório temp.</p>
+<div class="accept"><strong>Critério:</strong> <code>loadUri("file:///tmp/jauri-xyz/index.html")</code> carrega HTML com CSS e JS inclusos.</div>
+</div>
+
+<div class="task">
+<h4>M1.4 — WebView com resize automático</h4>
+<p><span class="tag tag-gtk">gtk</span> <span class="tag tag-jna">jna</span></p>
+<p>Configurar WebView pra ocupar 100% do espaço da janela com <code>gtk_container_add</code> e expand. A webview redimensiona junto com a janela.</p>
+<div class="accept"><strong>Critério:</strong> Arrastar borda da janela → conteúdo HTML redimensiona proporcionalmente.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M2 — HTTP Server + IPC Bridge</h3>
+<p class="meta">Dependências: M1 &bull; Entrega: webview carrega HTML que faz fetch pro backend Java</p>
+<p>Alvo: servidor HTTP localhost, API JSON, frontend se comunicando com backend.</p>
+
+<div class="task">
+<h4>M2.1 — HttpServer simples na porta 0</h4>
+<p><span class="tag tag-http">http</span></p>
+<p>Criar <code>JauriHttpServer</code> com <code>com.sun.net.httpserver.HttpServer</code>. Escutar em <code>127.0.0.1:0</code> (porta aleatória). Retornar a porta escolhida.</p>
+<div class="accept"><strong>Critério:</strong> <code>curl http://127.0.0.1:$PORT/health</code> retorna <code>{"status":"ok"}</code>.</div>
+</div>
+
+<div class="task">
+<h4>M2.2 — Servir arquivos estáticos</h4>
+<p><span class="tag tag-http">http</span> <span class="tag tag-html">html</span></p>
+<p>Mapear <code>/</code> pra servir <code>static/</code> do classpath ou diretório temp. Content-Type automático por extensão.</p>
+<div class="accept"><strong>Critério:</strong> <code>curl http://127.0.0.1:$PORT/index.html</code> retorna o HTML servido.</div>
+</div>
+
+<div class="task">
+<h4>M2.3 — Endpoint /api/invoke (POST JSON)</h4>
+<p><span class="tag tag-http">http</span> <span class="tag tag-bridge">bridge</span></p>
+<p>Endpoint <code>POST /api/invoke</code> que recebe <code>{"cmd":"ping","args":{}}</code>, processa, retorna <code>{"result":"pong"}</code>. Usar Jackson/Gson pra parse.</p>
+<div class="accept"><strong>Critério:</strong> <code>curl -X POST -d '{"cmd":"ping","args":{}}' http://127.0.0.1:$PORT/api/invoke</code> → <code>{"result":"pong"}</code></div>
+</div>
+
+<div class="task">
+<h4>M2.4 — HandlerRegistry: registrar comandos</h4>
+<p><span class="tag tag-bridge">bridge</span> <span class="tag tag-http">http</span></p>
+<p>Criar <code>HandlerRegistry</code> que mapeia <code>cmd</code> string → função Java. Interface <code>JauriHandler</code> com <code>handle(JsonObject args) → JsonObject</code>.</p>
+<div class="accept"><strong>Critério:</strong> <code>registry.register("hello", args -> {"message": "Olá, " + args.get("name")})</code> funciona via api/invoke.</div>
+</div>
+
+<div class="task">
+<h4>M2.5 — Integração: webview carrega da HTTP server</h4>
+<p><span class="tag tag-bridge">bridge</span> <span class="tag tag-html">html</span></p>
+<p>Ao iniciar, extrair <code>/static/</code> pra temp, subir HTTP server, abrir webview em <code>http://127.0.0.1:$PORT/index.html</code>. HTML faz fetch pra <code>/api/invoke</code> e exibe resultado.</p>
+<div class="accept"><strong>Critério:</strong> App inicia → janela aparece com HTML renderizado → clicar botão chama Java → resultado aparece na tela.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M3 — Shutdown limpo + ciclo de vida</h3>
+<p class="meta">Dependências: M2 &bull; Entrega: abrir/fechar o app sem leaks ou zumbis</p>
+
+<div class="task">
+<h4>M3.1 — Close handler no GTK (janela fechada)</h4>
+<p><span class="tag tag-gtk">gtk</span></p>
+<p>Binding de callback <code>g_signal_connect</code> pra evento <code>destroy</code> da janela. Quando usuário fecha, disparar shutdown.</p>
+<div class="accept"><strong>Critério:</strong> Fechar janela → HTTP server para, thread termina, processo sai (exit 0).</div>
+</div>
+
+<div class="task">
+<h4>M3.2 — Graceful shutdown do HTTP server</h4>
+<p><span class="tag tag-http">http</span></p>
+<p><code>HttpServer.stop(1)</code> com timeout 1 segundo. Esperar requisições em andamento terminarem.</p>
+<div class="accept"><strong>Critério:</strong> Matar app durante requisição lenta → servidor fecha sem socket preso.</div>
+</div>
+
+<div class="task">
+<h4>M3.3 — JauriApp: classe de ciclo de vida</h4>
+<p><span class="tag tag-bridge">bridge</span></p>
+<p>Criar <code>JauriApp</code> que orquestra: init(handlerRegistry) → start() → waitForClose() → stop(). Estado claro: CREATED → RUNNING → STOPPED.</p>
+<div class="accept"><strong>Critério:</strong> Teste que chama start() + stop() sem abrir janela (sem GTK) completa em &lt;1s.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M4 — App Demo funcional</h3>
+<p class="meta">Dependências: M3 &bull; Entrega: app de exemplo usando Jauri engine</p>
+<p>Alvo: validar que a engine serve pra construir algo real. Um app de banco de dados simples com JDBC.</p>
+
+<div class="task">
+<h4>M4.1 — App: jauri-demo com tela de login SQLite</h4>
+<p><span class="tag tag-html">html</span> <span class="tag tag-bridge">bridge</span></p>
+<p>Criar <code>jauri-demo.jar</code> com <code>/static/index.html</code>, campo de SQL, botão executar, tabela de resultados. Usar JDBC SQLite.</p>
+<div class="accept"><strong>Critério:</strong> Rodar com Jauri → abrir janela → digitar SELECT 1 → ver resultado na tabela.</div>
+</div>
+
+<div class="task">
+<h4>M4.2 — Hot reload durante desenvolvimento</h4>
+<p><span class="tag tag-html">html</span></p>
+<p>Se <code>JAURE_DEV=true</code>, ao invés de extrair do jar, servir direto de <code>src/main/resources/static/</code>. Mudança no HTML reflete sem rebuild.</p>
+<div class="accept"><strong>Critério:</strong> Alterar <code>index.html</code> → atualizar webview (F5 ou watch) → ver mudança.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M5 — GraalVM Native Image</h3>
+<p class="meta">Dependências: M4 &bull; Entrega: binário único de ~15MB que roda sem JDK</p>
+
+<div class="task">
+<h4>M5.1 — native-image com reflection config</h4>
+<p><span class="tag tag-graalvm">graalvm</span></p>
+<p>Criar <code>reflect-config.json</code> manual (JNA, HTTP server, Gson/Jackson). Compilar o Jauri runtime como binário.</p>
+<div class="accept"><strong>Critério:</strong> <code>native-image -jar jauri.jar jauri</code> → <code>./jauri</code> abre o app demo.</div>
+</div>
+
+<div class="task">
+<h4>M5.2 — JNA + native-image (config especial)</h4>
+<p><span class="tag tag-graalvm">graalvm</span> <span class="tag tag-jna">jna</span></p>
+<p>JNA precisa de <code>jni-config.json</code> e <code>--initialize-at-build-time</code>. Documentar as flags exatas.</p>
+<div class="accept"><strong>Critério:</strong> native-image compila sem warnings JNA. Binário abre webview.</div>
+</div>
+
+<div class="task">
+<h4>M5.3 — Reduzir tamanho do binário</h4>
+<p><span class="tag tag-graalvm">graalvm</span></p>
+<p>Analisar o que infla (reflection metadata, libs não usadas). Usar <code>-H:+ReportUnusedElements</code>. Alvo: &lt;20MB.</p>
+<div class="accept"><strong>Critério:</strong> <code>./jauri</code> &lt; 20MB. Demo SQLite roda.</div>
+</div>
+
+<div class="task">
+<h4>M5.4 — Script de release: build + zip</h4>
+<p><span class="tag tag-graalvm">graalvm</span></p>
+<p><code>make release</code> que compila native-image e gera <code>jauri-linux-x64.zip</code> com binário + README.</p>
+<div class="accept"><strong>Critério:</strong> Rodar <code>make release</code> → <code>.zip</code> pronto pra distribuir.</div>
+</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="milestone">
+<h3>M6 — Polimento + distribuição</h3>
+<p class="meta">Dependências: M5 &bull; Entrega: ferramenta usável por terceiros</p>
+
+<div class="task">
+<h4>M6.1 — Tratamento de erros + logs</h4>
+<p>Logging com log4j ou java.util.logging. Erros de JNA viram exceções Java descritivas. <code>stderr</code> mostra stack trace, stdout fica limpo.</p>
+<div class="accept"><strong>Critério:</strong> Se WebKitGTK não estiver instalado → mensagem clara: "libwebkit2gtk-4.1.so not found. Install: sudo apt install libwebkit2gtk-4.1-dev"</div>
+</div>
+
+<div class="task">
+<h4>M6.2 — README + exemplos</h4>
+<p>Documentação: como criar um app Jauri, estrutura de diretórios, exemplos, FAQ.</p>
+<div class="accept"><strong>Critério:</strong> Um dev novo consegue criar um app Jauri em 10 minutos seguindo o README.</div>
+</div>
+
+<div class="task">
+<h4>M6.3 — Testes automatizados (headless)</h4>
+<p>Testes que não abrem janela: mockar JNA, testar HTTP server, testar handler registry, testar ciclo de vida.</p>
+<div class="accept"><strong>Critério:</strong> <code>mvn test</code> roda 20+ testes em &lt;10s sem GTK.</div>
+</div>
+</div>
+
+<h2 id="adrs">ADRs (Architecture Decision Records)</h2>
+
+<table>
+  <tr><th>#</th><th>Título</th><th>Decisão</th></tr>
+  <tr><td><a href="plans/adr-001-architecture-overview.html">001</a></td><td>Arquitetura Geral</td><td>4 camadas: Native / WebView / IPC / Runtime</td></tr>
+  <tr><td>002</td><td>Comunicação IPC</td><td>HTTP localhost, não pipe/subprocess/JNI</td></tr>
+  <tr><td>003</td><td>Embedding da webview</td><td>JNA, não JNI, não Panama (JDK 22+)</td></tr>
+  <tr><td>004</td><td>Serialização JSON</td><td>Gson (leve, reflection config explícita)</td></tr>
+  <tr><td>005</td><td>Frontend</td><td>HTML/CSS/JS puro, framework opt-in</td></tr>
+</table>
+
+</body>
+</html>
