@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Jauri — M0: Janela GTK com Panama FFM</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; background: #0d1117; color: #c9d1d9; line-height: 1.6; }
+  h1 { color: #58a6ff; border-bottom: 2px solid #30363d; padding-bottom: .5rem; }
+  h2 { color: #58a6ff; margin-top: 2.5rem; }
+  h3 { color: #d2a8ff; margin-top: 2rem; }
+  h4 { color: #f0f6fc; margin: 1rem 0 .25rem 0; }
+  .meta { color: #8b949e; font-size: .9rem; }
+  .box { background: #1c2128; border-left: 3px solid #58a6ff; padding: .75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .box-win { background: #1c2128; border-left: 3px solid #3fb950; padding: .75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .task { background: #0d1117; border: 1px solid #21262d; border-radius: 6px; padding: 1rem; margin: .75rem 0; }
+  .task h4 { margin: 0 0 .25rem 0; color: #f0f6fc; }
+  .accept { background: #1c2128; border-left: 3px solid #3fb950; padding: .5rem .75rem; margin-top: .5rem; border-radius: 0 6px 6px 0; font-size: .9rem; }
+  code { background: #1c2128; padding: 2px 6px; border-radius: 4px; font-size: .85rem; }
+  pre { background: #1c2128; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: .85rem; line-height: 1.4; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { border: 1px solid #30363d; padding: .5rem .75rem; text-align: left; }
+  th { background: #161b22; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
+  .tag-panama { background: #8957e5; color: #fff; }
+  .tag-gtk { background: #1f6feb; color: #fff; }
+  .tag-e2e { background: #d29922; color: #fff; }
+  .tag-unit { background: #238636; color: #fff; }
+  ul { padding-left: 1.2rem; }
+  li { margin: .25rem 0; }
+  .e2e { background: #161b22; border: 2px solid #d29922; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; }
+  .e2e h3 { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>Jauri — M0: Janela GTK com Panama FFM</h1>
+<p class="meta">versão 0.1 &bull; 2026-05-18 &bull; ADR-003 (Panama FFM)</p>
+
+<div class="box">
+<strong>Entrega do marco:</strong> Binário que abre uma janela GTK vazia e fecha limpo com exit code 0.
+<br><strong>Stack:</strong> Java 22+ (Panama FFM) + GTK 3 + Maven + JUnit 5
+<br><strong>TDD:</strong> Cada task tem teste unitário. O E2E cobre o deliverable completo.
+<br><strong>Reuso:</strong> Bindings Panama de <code>PanamaGtkBench.java</code> adaptados para <code>libgtk-3.so</code> do sistema (não lib custom).
+</div>
+
+<h2>Tasks</h2>
+
+<!-- ============================================================ -->
+<div class="task">
+<h4>M0.1 — Scaffold Maven + Panama FFM</h4>
+<p><span class="tag tag-panama">panama</span></p>
+<p>Criar projeto Maven com JDK 22+, <code>pom.xml</code> sem dependências externas, classe <code>jauri.Main</code> vazia.</p>
+<p><strong>Arquivos:</strong> <code>pom.xml</code>, <code>src/main/java/jauri/Main.java</code></p>
+<div class="accept"><strong>Critério:</strong> <code>mvn compile</code> gera class files sem erros. <code>Main.main()</code> printa "Jauri M0" e termina.</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="task">
+<h4>M0.2 — LibC binding (Panama warm-up)</h4>
+<p><span class="tag tag-panama">panama</span> <span class="tag tag-unit">unit</span></p>
+<p>Criar <code>jauri.native.LibC</code> com Panama FFM para chamar <code>getpid()</code> (void→int) e <code>printf()</code> (string→void) de <code>libc.so.6</code>. Prova que o binding Panama FFM funciona com lib do sistema.</p>
+<p><strong>Reuso:</strong> Padrão <code>Linker.downcallHandle</code> + <code>SymbolLookup.libraryLookup</code> do benchmark <code>PanamaGtkBench.java</code>.</p>
+<div class="accept"><strong>Critério:</strong> Teste unitário verifica: <code>LibC.getpid() > 0</code>. <code>LibC.printf("hello")</code> printa no stdout.</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="task">
+<h4>M0.3 — GTK 3 bindings (janela)</h4>
+<p><span class="tag tag-panama">panama</span> <span class="tag tag-gtk">gtk</span> <span class="tag tag-unit">unit</span></p>
+<p>Criar <code>jauri.native.Gtk3</code> com Panama FFM para <code>libgtk-3.so</code>:</p>
+<ul>
+  <li><code>gtk_init(String[] args)</code> — inicializa GTK</li>
+  <li><code>gtk_window_new(int type)</code> → ponteiro (long)</li>
+  <li><code>gtk_widget_show_all(long window)</code></li>
+  <li><code>gtk_main()</code> — loop principal</li>
+  <li><code>gtk_main_quit()</code> — sai do loop</li>
+  <li><code>g_signal_connect_data(long instance, String signal, long handler, ...)</code></li>
+</ul>
+<p><strong>Reuso:</strong> <code>FunctionDescriptor</code> patterns iguais ao benchmark, mas apontando pra <code>libgtk-3.so</code> via <code>SymbolLookay.libraryLookup("libgtk-3.so", arena)</code>.</p>
+<div class="accept"><strong>Critério:</strong> Teste unitário: <code>Gtk3.gtk_window_new(GTK_WINDOW_TOPLEVEL)</code> retorna ponteiro não-nulo. <code>FunctionDescriptor</code> são criados sem exceção.</div>
+</div>
+
+<!-- ============================================================ -->
+<div class="task">
+<h4>M0.4 — GtkMainLoop lifecycle</h4>
+<p><span class="tag tag-gtk">gtk</span> <span class="tag tag-panama">panama</span> <span class="tag tag-unit">unit</span> <span class="tag tag-e2e">e2e</span></p>
+<p>Criar <code>jauri.GtkMainLoop</code> que gerencia o ciclo de vida da janela GTK:</p>
+<ul>
+  <li>Estado: <code>CREATED → RUNNING → STOPPED</code></li>
+  <li><code>start()</code> — inicializa GTK, cria janela, registra callback <code>destroy</code>, entra em <code>gtk_main()</code></li>
+  <li><code>stop()</code> — chama <code>gtk_main_quit()</code></li>
+  <li><code>waitForClose()</code> — bloqueia até STOPPED</li>
+</ul>
+<p><strong>Callback destroy:</strong> Usar <code>g_signal_connect_data</code> com um callback <code>MemoryLayout</code> que chama <code>stop()</code> quando a janela é fechada.</p>
+<div class="accept"><strong>Critério:</strong> Teste unitário verifica transição de estados sem GTK real. E2E <code>xvfb-run</code> abre janela → destroy → exit 0.</div>
+</div>
+
+<!-- ============================================================ -->
+<h2>E2E Test — M0 Completo</h2>
+
+<div class="e2e">
+<h3>M0 E2E: Janela abre e fecha limpo</h3>
+<p><span class="tag tag-e2e">e2e</span></p>
+<p><strong>Arquivo:</strong> <code>src/test/java/jauri/M0EndToEndTest.java</code></p>
+<p><strong>Cobertura:</strong> M0.2 (binding libc) + M0.3 (binding GTK) + M0.4 (lifecycle)</p>
+<p><strong>Passos:</strong></p>
+<ol>
+  <li>Verificar que <code>LibC.getpid()</code> funciona</li>
+  <li>Criar <code>GtkMainLoop</code>, chamar <code>start()</code></li>
+  <li>Aguardar 500ms para janela aparecer (xvfb-run)</li>
+  <li>Chamar <code>stop()</code> simulando fechamento</li>
+  <li>Verificar estado <code>STOPPED</code> e exit code 0</li>
+</ol>
+<div class="accept"><strong>Critério:</strong> <code>mvn test -Dtest=M0EndToEndTest</code> passa com xvfb-run. Exit code 0. Janela não deixa processo zumbi.</div>
+</div>
+
+<h2>Árvore de Arquivos (pós-M0)</h2>
+
+<pre>
+jauri/
+├── pom.xml
+├── src/
+│   ├── main/java/jauri/
+│   │   ├── Main.java              (M0.1 — entrada)
+│   │   ├── GtkMainLoop.java       (M0.4 — lifecycle)
+│   │   └── native/
+│   │       ├── LibC.java           (M0.2 — warm-up)
+│   │       └── Gtk3.java           (M0.3 — bindings GTK)
+│   └── test/java/jauri/
+│       ├── native/
+│       │   ├── LibCTest.java       (M0.2 — unit)
+│       │   └── Gtk3Test.java       (M0.3 — unit)
+│       ├── GtkMainLoopTest.java    (M0.4 — unit)
+│       └── M0EndToEndTest.java     (M0   — e2e)
+</pre>
+
+<h2>Dependências entre Tasks</h2>
+
+<table>
+  <tr><th>Task</th><th>Depende de</th><th>Testes</th><th>Linhas (aprox)</th></tr>
+  <tr><td>M0.1 — Scaffold</td><td>—</td><td>Nenhum</td><td>25</td></tr>
+  <tr><td>M0.2 — LibC binding</td><td>M0.1</td><td>Unit: LibCTest</td><td>80</td></tr>
+  <tr><td>M0.3 — GTK bindings</td><td>M0.1</td><td>Unit: Gtk3Test</td><td>140</td></tr>
+  <tr><td>M0.4 — GtkMainLoop</td><td>M0.2 + M0.3</td><td>Unit: GtkMainLoopTest</td><td>200</td></tr>
+  <tr><td>M0 E2E</td><td>M0.4</td><td>E2E: M0EndToEndTest</td><td>80</td></tr>
+</table>
+
+<p><strong>Total:</strong> ~525 linhas de código, 4 tasks + 1 E2E, max 200 linhas por task.</p>
+
+</body>
+</html>

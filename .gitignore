@@ -2,6 +2,8 @@ target/
 *.class
 *.jar
 *.log
+*.so
+*.o
 .idea/
 *.iml
 .vscode/
