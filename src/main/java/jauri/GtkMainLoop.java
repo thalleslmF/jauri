@@ -10,6 +10,7 @@ public class GtkMainLoop {
     private long window = 0;
     private JauriWebView webView;
     private String loadHtmlOnStart = null;
+    private String loadUriOnStart = null;
 
     public String getState() {
         return state.name();
@@ -18,6 +19,11 @@ public class GtkMainLoop {
     /** Set HTML to load in the WebView right before gtk_main blocks. */
     public void setLoadHtmlOnStart(String html) {
         this.loadHtmlOnStart = html;
+    }
+
+    /** Set URI to load in the WebView right before gtk_main blocks. */
+    public void setLoadUri(String uri) {
+        this.loadUriOnStart = uri;
     }
 
     public void start() {
@@ -52,8 +58,10 @@ public class GtkMainLoop {
 
         state = State.RUNNING;
 
-        // Load HTML on the GTK main thread (WebKitGTK is not thread-safe)
-        if (loadHtmlOnStart != null) {
+        // Load HTML or URI on the GTK main thread (WebKitGTK is not thread-safe)
+        if (loadUriOnStart != null) {
+            webView.loadUri(loadUriOnStart);
+        } else if (loadHtmlOnStart != null) {
             webView.loadHtml(loadHtmlOnStart, null);
         }
 
