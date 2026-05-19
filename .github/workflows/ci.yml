@@ -32,8 +32,8 @@ jobs:
       - name: Build + unit tests
         run: xvfb-run mvn clean test -Djauri.e2e=false
 
-      - name: E2E — M0: window opens and closes
+      - name: E2E - M0: window opens and closes
         run: xvfb-run mvn test -Djauri.e2e=true -Dtest=M0EndToEndTest#windowOpensAndCloses
 
-      - name: E2E — M1: WebView loads HTML + JS validation
+      - name: E2E - M1: WebView loads HTML + JS validation
         run: xvfb-run mvn test -Djauri.e2e=true -Dtest=M1EndToEndTest#webViewLoadsHtmlAndJsReturnsContent
