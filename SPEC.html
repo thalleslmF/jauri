@@ -100,46 +100,20 @@
 
 <!-- ============================================================ -->
 <div class="milestone">
-<h3>M2 ⏳ — HTTP Server + IPC Bridge</h3>
-<p class="meta">Dependências: M1 &bull; Entrega: webview carrega HTML que faz fetch pro backend Java</p>
-<p>Alvo: servidor HTTP localhost, API JSON, frontend se comunicando com backend.</p>
+<h3>M2 ✅ — HTTP Server + IPC Bridge (PR #13)</h3>
+<p class="meta">Dependências: M1 &bull; Entrega: webview carrega HTML que faz fetch pro backend Java &bull; <span class="tag tag-http" style="background:#3fb950">concluído</span></p>
+<p>Servidor HTTP localhost com API JSON + static file server. <del>JauriWebView</del> vira backend. Frontend HTML/CSS/JS puro faz fetch pro backend e exibe resultado.</p>
 
-<div class="task">
-<h4>M2.1 — HttpServer simples na porta 0</h4>
-<p><span class="tag tag-http">http</span></p>
-<p>Criar <code>JauriHttpServer</code> com <code>com.sun.net.httpserver.HttpServer</code>. Escutar em <code>127.0.0.1:0</code> (porta aleatória). Retornar a porta escolhida.</p>
-<div class="accept"><strong>Critério:</strong> <code>curl http://127.0.0.1:$PORT/health</code> retorna <code>{"status":"ok"}</code>.</div>
-</div>
+<table>
+  <tr><th>Arquivo</th><th>Bindings</th></tr>
+  <tr><td><code>JauriHttpServer</code></td><td><code>HttpServer</code> em porta aleatória. Endpoints: <code>GET /health</code> (M2.1), <code>GET /</code> / <code>GET /index.html</code> (M2.2), <code>POST /api/invoke</code> (M2.3)</td></tr>
+  <tr><td><code>HandlerRegistry</code></td><td>ConcurrentHashMap cmd → handler. <code>registerDefaults()</code> registra <code>ping → pong</code>. Interface funcional <code>Handler.handle(JsonObject args) → JsonObject</code></td></tr>
+  <tr><td><code>src/main/resources/static/index.html</code></td><td>UI: botão "Ping Backend" que chama <code>POST /api/invoke</code> via fetch e exibe resultado</td></tr>
+  <tr><td><code>Main.java</code> (M2.5)</td><td>Orquestra: cria registry → cria HTTP server → extrai static files → GTK thread carrega URI do HTTP server</td></tr>
+</table>
 
-<div class="task">
-<h4>M2.2 — Servir arquivos estáticos</h4>
-<p><span class="tag tag-http">http</span> <span class="tag tag-html">html</span></p>
-<p>Mapear <code>/</code> pra servir <code>static/</code> do classpath ou diretório temp. Content-Type automático por extensão.</p>
-<div class="accept"><strong>Critério:</strong> <code>curl http://127.0.0.1:$PORT/index.html</code> retorna o HTML servido.</div>
-</div>
-
-<div class="task">
-<h4>M2.3 — Endpoint /api/invoke (POST JSON)</h4>
-<p><span class="tag tag-http">http</span> <span class="tag tag-bridge">bridge</span></p>
-<p>Endpoint <code>POST /api/invoke</code> que recebe <code>{"cmd":"ping","args":{}}</code>, processa, retorna <code>{"result":"pong"}</code>. Usar Gson pra parse.</p>
-<div class="accept"><strong>Critério:</strong> <code>curl -X POST -d '{"cmd":"ping","args":{}}' http://127.0.0.1:$PORT/api/invoke</code> → <code>{"result":"pong"}</code></div>
-</div>
-
-<div class="task">
-<h4>M2.4 — HandlerRegistry: registrar comandos</h4>
-<p><span class="tag tag-bridge">bridge</span> <span class="tag tag-http">http</span></p>
-<p>Criar <code>HandlerRegistry</code> que mapeia <code>cmd</code> string → função Java. Interface <code>JauriHandler</code> com <code>handle(JsonObject args) → JsonObject</code>.</p>
-<div class="accept"><strong>Critério:</strong> <code>registry.register("hello", args -> {"message": "Olá, " + args.get("name")})</code> funciona via api/invoke.</div>
-</div>
-
-<div class="task">
-<h4>M2.5 — Integração: webview carrega da HTTP server</h4>
-<p><span class="tag tag-bridge">bridge</span> <span class="tag tag-html">html</span></p>
-<p>Ao iniciar, extrair <code>/static/</code> pra temp, subir HTTP server, abrir webview em <code>http://127.0.0.1:$PORT/index.html</code>. HTML faz fetch pra <code>/api/invoke</code> e exibe resultado.</p>
-<div class="accept"><strong>Critério:</strong> App inicia → janela aparece com HTML renderizado → clicar botão chama Java → resultado aparece na tela.</div>
-</div>
-
-<div class="accept" style="margin-top:0.75rem"><strong>E2E:</strong> <code>xvfb-run mvn test -Djauri.e2e=true</code> — teste abre janela, verifica GET /health, verifica POST /api/invoke com ping/pong, depois fecha. HTML carregado via webkit_web_view_load_uri apontando pro servidor HTTP.</div>
+<div class="accept"><strong>Verificação:</strong> <code>mvn test</code> (8 testes) + <code>xvfb-run mvn test -Djauri.e2e=true</code> passam. <code>xvfb-run mvn compile exec:java</code> abre janela com HTML + botão que faz fetch pro backend.</div>
+<div class="accept" style="margin-top:0.25rem"><strong>E2E:</strong> <code>xvfb-run mvn test -Djauri.e2e=true -Dtest=M2EndToEndTest#httpServerHealthAndPing</code> — valida GET /health → POST ping → GET /index.html → GTK webview carrega URI + fetch(/api/invoke) lê resultado do DOM. 6.7s.</div>
 </div>
 
 <!-- ============================================================ -->

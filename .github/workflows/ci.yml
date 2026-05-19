@@ -37,3 +37,6 @@ jobs:
 
       - name: "E2E - M1: WebView loads HTML + JS validation"
         run: 'xvfb-run mvn test -Djauri.e2e=true -Dtest=M1EndToEndTest#webViewLoadsHtmlAndJsReturnsContent'
+
+      - name: "E2E - M2: HTTP server + IPC bridge + webview fetch"
+        run: 'xvfb-run mvn test -Djauri.e2e=true -Dtest=M2EndToEndTest#httpServerHealthAndPing'
