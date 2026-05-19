@@ -8,3 +8,5 @@ target/
 *.iml
 .vscode/
 jauri-linux-x64.zip
+benchmark/
+specs/

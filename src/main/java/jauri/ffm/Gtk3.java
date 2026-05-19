@@ -18,6 +18,10 @@ public class Gtk3 {
     private static final MethodHandle GTK_MAIN;
     private static final MethodHandle GTK_MAIN_QUIT;
     private static final MethodHandle G_SIGNAL_CONNECT_DATA;
+    private static final MethodHandle GTK_CONTAINER_ADD;
+    private static final MethodHandle GTK_BOX_NEW;
+    private static final MethodHandle GTK_WIDGET_SET_HEXPAND;
+    private static final MethodHandle GTK_WIDGET_SET_VEXPAND;
     private static final long QUIT_STUB_ADDRESS;
 
     // GTK constants
@@ -72,6 +76,31 @@ public class Gtk3 {
                 gobject.findOrThrow("g_signal_connect_data"),
                 PTR_PTR_PTR_LONG_LONG_INT);
 
+            GTK_CONTAINER_ADD = linker.downcallHandle(
+                gtk.findOrThrow("gtk_container_add"),
+                FunctionDescriptor.ofVoid(
+                    ValueLayout.JAVA_LONG,  // GtkContainer*
+                    ValueLayout.JAVA_LONG)); // GtkWidget*
+
+            GTK_BOX_NEW = linker.downcallHandle(
+                gtk.findOrThrow("gtk_box_new"),
+                FunctionDescriptor.of(
+                    ValueLayout.JAVA_LONG,   // returns GtkWidget*
+                    ValueLayout.JAVA_INT,    // GtkOrientation
+                    ValueLayout.JAVA_INT));  // spacing
+
+            GTK_WIDGET_SET_HEXPAND = linker.downcallHandle(
+                gtk.findOrThrow("gtk_widget_set_hexpand"),
+                FunctionDescriptor.ofVoid(
+                    ValueLayout.JAVA_LONG,  // GtkWidget*
+                    ValueLayout.JAVA_INT)); // gboolean
+
+            GTK_WIDGET_SET_VEXPAND = linker.downcallHandle(
+                gtk.findOrThrow("gtk_widget_set_vexpand"),
+                FunctionDescriptor.ofVoid(
+                    ValueLayout.JAVA_LONG,  // GtkWidget*
+                    ValueLayout.JAVA_INT)); // gboolean
+
             // Create upcall stub for "destroy" → gtk_main_quit
             MethodHandle quitHandle = MethodHandles.lookup().findStatic(
                 Gtk3.class, "gtkMainQuit", MethodType.methodType(void.class));
@@ -111,6 +140,30 @@ public class Gtk3 {
 
     public static void gtkMainQuit() {
         try { GTK_MAIN_QUIT.invokeExact(); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** Add a child widget to a container. */
+    public static void gtkContainerAdd(long container, long widget) {
+        try { GTK_CONTAINER_ADD.invokeExact(container, widget); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** Create a GtkBox. orientation: 0=vertical, 1=horizontal. */
+    public static long gtkBoxNew(int orientation, int spacing) {
+        try { return (long) GTK_BOX_NEW.invokeExact(orientation, spacing); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** Set hexpand on a widget. */
+    public static void gtkWidgetSetHexpand(long widget, boolean expand) {
+        try { GTK_WIDGET_SET_HEXPAND.invokeExact(widget, expand ? 1 : 0); }
+        catch (Throwable t) { throw new RuntimeException(t); }
+    }
+
+    /** Set vexpand on a widget. */
+    public static void gtkWidgetSetVexpand(long widget, boolean expand) {
+        try { GTK_WIDGET_SET_VEXPAND.invokeExact(widget, expand ? 1 : 0); }
         catch (Throwable t) { throw new RuntimeException(t); }
     }
 

@@ -8,9 +8,16 @@ public class GtkMainLoop {
 
     private State state = State.CREATED;
     private long window = 0;
+    private JauriWebView webView;
+    private String loadHtmlOnStart = null;
 
     public String getState() {
         return state.name();
+    }
+
+    /** Set HTML to load in the WebView right before gtk_main blocks. */
+    public void setLoadHtmlOnStart(String html) {
+        this.loadHtmlOnStart = html;
     }
 
     public void start() {
@@ -30,6 +37,14 @@ public class GtkMainLoop {
 
         Gtk3.gtkWindowSetDefaultSize(window, 800, 600);
 
+        // Create GtkBox container for layout
+        long box = Gtk3.gtkBoxNew(0, 0); // GTK_ORIENTATION_VERTICAL
+        Gtk3.gtkContainerAdd(window, box);
+
+        // Create WebView inside the box
+        webView = new JauriWebView();
+        webView.create(box);
+
         // Connect "destroy" signal → calls gtk_main_quit
         Gtk3.gSignalConnectDestroy(window);
 
@@ -37,10 +52,19 @@ public class GtkMainLoop {
 
         state = State.RUNNING;
 
+        // Load HTML on the GTK main thread (WebKitGTK is not thread-safe)
+        if (loadHtmlOnStart != null) {
+            webView.loadHtml(loadHtmlOnStart, null);
+        }
+
         // Blocks until gtk_main_quit is called
         Gtk3.gtkMain();
 
         state = State.STOPPED;
+    }
+
+    public JauriWebView getWebView() {
+        return webView;
     }
 
     public void stop() {
