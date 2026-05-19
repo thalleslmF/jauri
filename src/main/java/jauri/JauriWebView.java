@@ -51,4 +51,21 @@ public class JauriWebView {
     public long getHandle() {
         return webView;
     }
+
+    /**
+     * Executes JavaScript in the WebView and returns the result.
+     * Blocks up to timeoutMs on the JS completion.
+     * Returns the string representation of the JS return value, or null on timeout.
+     */
+    public String evaluateJavaScript(String script, long timeoutMs) {
+        if (webView == 0) {
+            throw new IllegalStateException("WebView not created. Call create(container) first.");
+        }
+        return WebKit.webkitWebViewEvaluateJavaScript(webView, script, timeoutMs);
+    }
+
+    /** Convenience: evaluateJavaScript with 5-second timeout. */
+    public String evaluateJavaScript(String script) {
+        return evaluateJavaScript(script, 5000);
+    }
 }
