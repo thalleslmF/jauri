@@ -79,7 +79,7 @@ class M2EndToEndTest {
         final Throwable[] jsError = {null};
         Thread validator = new Thread(() -> {
             try {
-                Thread.sleep(2000); // wait for render + network
+                Thread.sleep(3000); // wait for render + network
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }

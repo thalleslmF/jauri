@@ -35,7 +35,7 @@
 <body>
 
 <h1>Jauri — Especificação Técnica</h1>
-<p class="meta">versão 0.3 &bull; 2026-05-19 &bull; <a href="#adrs" style="color:#58a6ff">ADRs</a></p>
+<p class="meta">versão 0.5 &bull; 2026-05-23 &bull; <a href="#adrs" style="color:#58a6ff">ADRs</a></p>
 
 <div class="box">
 <strong>Resumo:</strong> Jauri é uma engine Java que executa apps desktop usando webview nativa (WebKitGTK) como frontend, comunicação via HTTP localhost, e compilação com GraalVM native-image. Concorrente de JCEF e JavaFX WebView — mais leve, mais rápido, só Linux.
@@ -100,7 +100,7 @@
 
 <!-- ============================================================ -->
 <div class="milestone">
-<h3>M2 ✅ — HTTP Server + IPC Bridge (PR #13)</h3>
+<h3>M2 ✅ — HTTP Server + IPC Bridge</h3>
 <p class="meta">Dependências: M1 &bull; Entrega: webview carrega HTML que faz fetch pro backend Java &bull; <span class="tag tag-http" style="background:#3fb950">concluído</span></p>
 <p>Servidor HTTP localhost com API JSON + static file server. <del>JauriWebView</del> vira backend. Frontend HTML/CSS/JS puro faz fetch pro backend e exibe resultado.</p>
 
